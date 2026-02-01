@@ -9,6 +9,7 @@ import argparse
 from datetime import datetime
 from collections import defaultdict, Counter
 from pathlib import Path
+from security_analyzer import SecurityAnalyzer
 
 
 class LogAnalyzer:
@@ -16,6 +17,7 @@ class LogAnalyzer:
         self.log_file = Path(log_file)
         self.entries = []
         self.stats = defaultdict(int)
+        self.security_analyzer = SecurityAnalyzer()
         
     def parse_log(self):
         """Parse the log file and extract entries"""
@@ -34,7 +36,9 @@ class LogAnalyzer:
         """Parse a single log line"""
         # Common log patterns
         patterns = [
-            # Apache/Nginx access log
+            # Apache/Nginx access log with user agent
+            r'(?P<ip>\d+\.\d+\.\d+\.\d+).*?\[(?P<timestamp>[^\]]+)\].*?"(?P<method>\w+)\s+(?P<path>\S+).*?"\s+(?P<status>\d+)\s+(?P<size>\d+|-).*?"(?P<user_agent>[^"]*)"',
+            # Apache/Nginx access log without user agent
             r'(?P<ip>\d+\.\d+\.\d+\.\d+).*?\[(?P<timestamp>[^\]]+)\].*?"(?P<method>\w+)\s+(?P<path>\S+).*?"\s+(?P<status>\d+)\s+(?P<size>\d+|-)',
             # Common application log with timestamp
             r'(?P<timestamp>\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}).*?(?P<level>DEBUG|INFO|WARN|ERROR|FATAL).*?(?P<message>.*)',
@@ -128,6 +132,32 @@ class LogAnalyzer:
                 # Add your timestamp parsing logic here
                 filtered.append(entry)
         return filtered
+    
+    def security_analysis(self):
+        """Perform comprehensive security analysis"""
+        all_threats = []
+        
+        # Analyze each entry for security threats
+        for entry in self.entries:
+            threats = self.security_analyzer.analyze_entry(entry)
+            all_threats.extend(threats)
+            
+        # Detect brute force attempts
+        brute_force = self.security_analyzer.detect_brute_force()
+        
+        # Detect rate limiting violations
+        rate_limiting = self.security_analyzer.detect_rate_limiting()
+        
+        # Establish baseline and detect anomalies
+        baseline = self.security_analyzer.establish_baseline(self.entries)
+        anomalies = self.security_analyzer.detect_anomalies(self.entries, baseline)
+        
+        # Generate comprehensive report
+        report = self.security_analyzer.generate_security_report(
+            all_threats, brute_force, rate_limiting, anomalies
+        )
+        
+        return report, all_threats
 
 
 def main():
@@ -136,6 +166,8 @@ def main():
     parser.add_argument('--search', help='Search for pattern in logs')
     parser.add_argument('--level', help='Filter by log level (DEBUG, INFO, WARN, ERROR)')
     parser.add_argument('--case-sensitive', action='store_true', help='Case sensitive search')
+    parser.add_argument('--security', action='store_true', help='Perform security analysis')
+    parser.add_argument('--threats-only', action='store_true', help='Show only security threats')
     
     args = parser.parse_args()
     
@@ -143,7 +175,22 @@ def main():
         analyzer = LogAnalyzer(args.logfile)
         analyzer.parse_log()
         analyzer.analyze()
-        analyzer.print_summary()
+        
+        if not args.threats_only:
+            analyzer.print_summary()
+        
+        if args.security or args.threats_only:
+            report, threats = analyzer.security_analysis()
+            analyzer.security_analyzer.print_security_report(report)
+            
+            if threats and args.threats_only:
+                print(f"\n=== DETAILED THREAT ANALYSIS ===")
+                for i, threat in enumerate(threats[:20], 1):
+                    entry = threat['entry']
+                    print(f"\n{i}. {threat['type'].upper()} ({threat['severity']} severity)")
+                    print(f"   Line {entry['line_num']}: {entry['raw_line'][:100]}...")
+                    if entry.get('ip'):
+                        print(f"   IP: {entry['ip']}")
         
         if args.search:
             matches = analyzer.search(args.search, args.case_sensitive)
