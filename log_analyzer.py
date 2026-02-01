@@ -10,6 +10,7 @@ from datetime import datetime
 from collections import defaultdict, Counter
 from pathlib import Path
 from security_analyzer import SecurityAnalyzer
+from core_analyzer import CoreAnalyzer
 
 
 class LogAnalyzer:
@@ -18,6 +19,7 @@ class LogAnalyzer:
         self.entries = []
         self.stats = defaultdict(int)
         self.security_analyzer = SecurityAnalyzer()
+        self.core_analyzer = CoreAnalyzer()
         
     def parse_log(self):
         """Parse the log file and extract entries"""
@@ -158,6 +160,144 @@ class LogAnalyzer:
         )
         
         return report, all_threats
+    
+    def core_analysis(self):
+        """Perform comprehensive core analysis"""
+        analysis_results = {}
+        
+        try:
+            # Time-based analysis
+            analysis_results['time_patterns'] = self.core_analyzer.analyze_time_patterns(self.entries)
+            
+            # User agent analysis
+            analysis_results['user_agents'] = self.core_analyzer.analyze_user_agents(self.entries)
+            
+            # Performance analysis
+            analysis_results['performance'] = self.core_analyzer.analyze_response_times(self.entries)
+            
+            # Geographic analysis
+            analysis_results['geographic'] = self.core_analyzer.analyze_geographic_patterns(self.entries)
+            
+            # File access patterns
+            analysis_results['file_access'] = self.core_analyzer.analyze_file_access_patterns(self.entries)
+            
+            # Session tracking
+            analysis_results['sessions'] = self.core_analyzer.track_user_sessions(self.entries)
+            
+        except Exception as e:
+            print(f"Error in core analysis: {e}")
+            import traceback
+            traceback.print_exc()
+            
+        return analysis_results
+    
+    def print_core_analysis(self, analysis_results):
+        """Print formatted core analysis results"""
+        print(f"\n=== CORE ANALYSIS REPORT ===")
+        
+        # Time patterns
+        time_data = analysis_results.get('time_patterns', {})
+        if time_data:
+            print(f"\nTime Patterns:")
+            if time_data.get('peak_hour'):
+                print(f"  Peak hour: {time_data['peak_hour'][0]}:00 ({time_data['peak_hour'][1]} requests)")
+            if time_data.get('peak_day'):
+                print(f"  Peak day: {time_data['peak_day'][0]} ({time_data['peak_day'][1]} requests)")
+            
+            hourly = time_data.get('hourly_distribution', {})
+            if hourly:
+                print(f"  Hourly distribution (top 5):")
+                for hour, count in sorted(hourly.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    print(f"    {hour}:00 - {count} requests")
+        
+        # User agents
+        ua_data = analysis_results.get('user_agents', {})
+        if ua_data:
+            print(f"\nUser Agent Analysis:")
+            print(f"  Total unique user agents: {ua_data.get('total_unique_agents', 0)}")
+            
+            browsers = ua_data.get('browsers', {})
+            if browsers:
+                print(f"  Top browsers:")
+                for browser, count in sorted(browsers.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    print(f"    {browser}: {count}")
+            
+            os_systems = ua_data.get('operating_systems', {})
+            if os_systems:
+                print(f"  Top operating systems:")
+                for os_name, count in sorted(os_systems.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    print(f"    {os_name}: {count}")
+        
+        # Performance
+        perf_data = analysis_results.get('performance')
+        if perf_data:
+            print(f"\nPerformance Metrics:")
+            print(f"  Average response time: {perf_data.get('average_response_time', 0)} ms")
+            print(f"  95th percentile: {perf_data.get('p95_response_time', 0)} ms")
+            print(f"  99th percentile: {perf_data.get('p99_response_time', 0)} ms")
+            print(f"  Slow requests (>1s): {perf_data.get('slow_requests', 0)}")
+            
+            slowest_paths = perf_data.get('slowest_paths', [])
+            if slowest_paths:
+                print(f"  Slowest paths:")
+                for path, avg_time in slowest_paths[:5]:
+                    print(f"    {path}: {avg_time} ms")
+        
+        # Geographic
+        geo_data = analysis_results.get('geographic', {})
+        if geo_data:
+            print(f"\nGeographic Analysis:")
+            print(f"  Unique IP addresses: {geo_data.get('unique_ips', 0)}")
+            
+            regions = geo_data.get('estimated_regions', {})
+            if regions:
+                print(f"  Estimated regions:")
+                for region, count in regions.items():
+                    print(f"    {region}: {count} IPs")
+            
+            req_per_ip = geo_data.get('requests_per_ip', {})
+            if req_per_ip:
+                print(f"  Requests per IP - Avg: {req_per_ip.get('average', 0):.1f}, Max: {req_per_ip.get('max', 0)}")
+        
+        # File access
+        file_data = analysis_results.get('file_access', {})
+        if file_data:
+            print(f"\nFile Access Patterns:")
+            
+            static_dynamic = file_data.get('static_vs_dynamic', {})
+            if static_dynamic:
+                print(f"  Static content: {static_dynamic.get('static_percentage', 0)}%")
+                print(f"  Dynamic content: {static_dynamic.get('dynamic_percentage', 0)}%")
+            
+            methods = file_data.get('http_methods', {})
+            if methods:
+                print(f"  HTTP methods:")
+                for method, count in methods.items():
+                    print(f"    {method}: {count}")
+            
+            file_types = file_data.get('file_types', {})
+            if file_types:
+                print(f"  Top file types:")
+                for ext, count in sorted(file_types.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    print(f"    .{ext}: {count}")
+        
+        # Sessions
+        sessions = analysis_results.get('sessions', {})
+        if sessions:
+            print(f"\nSession Analysis:")
+            print(f"  Active sessions: {len(sessions)}")
+            
+            if sessions:
+                avg_duration = sum(s['duration_seconds'] for s in sessions.values()) / len(sessions)
+                avg_requests = sum(s['request_count'] for s in sessions.values()) / len(sessions)
+                print(f"  Average session duration: {avg_duration:.1f} seconds")
+                print(f"  Average requests per session: {avg_requests:.1f}")
+                
+                # Top sessions by duration
+                top_sessions = sorted(sessions.items(), key=lambda x: x[1]['duration_seconds'], reverse=True)[:5]
+                print(f"  Longest sessions:")
+                for ip, session_data in top_sessions:
+                    print(f"    {ip}: {session_data['duration_seconds']:.1f}s, {session_data['request_count']} requests")
 
 
 def main():
@@ -168,6 +308,12 @@ def main():
     parser.add_argument('--case-sensitive', action='store_true', help='Case sensitive search')
     parser.add_argument('--security', action='store_true', help='Perform security analysis')
     parser.add_argument('--threats-only', action='store_true', help='Show only security threats')
+    parser.add_argument('--core-analysis', action='store_true', help='Perform comprehensive core analysis')
+    parser.add_argument('--export-csv', help='Export analysis to CSV file')
+    parser.add_argument('--export-json', help='Export analysis to JSON file')
+    parser.add_argument('--time-analysis', action='store_true', help='Show detailed time-based analysis')
+    parser.add_argument('--user-agents', action='store_true', help='Show detailed user agent analysis')
+    parser.add_argument('--performance', action='store_true', help='Show performance metrics')
     
     args = parser.parse_args()
     
@@ -179,6 +325,21 @@ def main():
         if not args.threats_only:
             analyzer.print_summary()
         
+        # Core analysis
+        if args.core_analysis or args.time_analysis or args.user_agents or args.performance:
+            analysis_results = analyzer.core_analysis()
+            analyzer.print_core_analysis(analysis_results)
+            
+            # Export if requested
+            if args.export_csv:
+                analyzer.core_analyzer.export_analysis_to_csv(analysis_results, args.export_csv)
+                print(f"\nAnalysis exported to {args.export_csv}")
+                
+            if args.export_json:
+                analyzer.core_analyzer.export_analysis_to_json(analysis_results, args.export_json)
+                print(f"\nAnalysis exported to {args.export_json}")
+        
+        # Security analysis
         if args.security or args.threats_only:
             report, threats = analyzer.security_analysis()
             analyzer.security_analyzer.print_security_report(report)

@@ -2,6 +2,7 @@
 *.log
 logs/
 log_data/
+*.json
 
 # Python
 __pycache__/
