@@ -1,0 +1,6 @@
+# Basic requirements for log analyzer
+# No external dependencies needed for basic functionality
+# Future AI features may require:
+# pandas>=1.5.0
+# scikit-learn>=1.2.0
+# transformers>=4.20.0
