@@ -79,7 +79,8 @@ class SecurityAnalyzer:
                 })
                 
         # Track failed logins (4xx status codes)
-        if entry.get('status') in ['401', '403', '404']:
+        status = entry.get('status')
+        if status in ['401', '403', '404']:
             ip = entry.get('ip')
             if ip:
                 self.failed_logins[ip].append(entry)
@@ -103,7 +104,16 @@ class SecurityAnalyzer:
         return severity_map.get(attack_type, 'low')
     
     def detect_brute_force(self, threshold=10, time_window=300):
-        """Detect potential brute force attacks"""
+        """
+        Detect potential brute force attacks
+        
+        Args:
+            threshold: Minimum number of failed attempts to trigger alert
+            time_window: Time window in seconds (not currently used but reserved for future enhancement)
+        
+        Returns:
+            List of dicts containing IP addresses with suspicious failed login patterns
+        """
         brute_force_ips = []
         
         for ip, attempts in self.failed_logins.items():
@@ -120,7 +130,16 @@ class SecurityAnalyzer:
         return brute_force_ips
     
     def detect_rate_limiting(self, threshold=100, time_window=60):
-        """Detect potential DDoS or excessive requests"""
+        """
+        Detect potential DDoS or excessive requests
+        
+        Args:
+            threshold: Minimum number of requests to trigger alert
+            time_window: Time window in seconds (not currently used but reserved for future enhancement)
+        
+        Returns:
+            List of dicts containing IP addresses with excessive request patterns
+        """
         suspicious_ips = []
         
         for ip, requests in self.rate_limits.items():
@@ -134,7 +153,15 @@ class SecurityAnalyzer:
         return suspicious_ips
     
     def establish_baseline(self, entries):
-        """Establish baseline behavior patterns"""
+        """
+        Establish baseline behavior patterns from log entries
+        
+        Args:
+            entries: List of parsed log entry dictionaries
+        
+        Returns:
+            Dict containing baseline metrics for normal behavior
+        """
         baseline = {
             'avg_requests_per_ip': 0,
             'common_paths': Counter(),
@@ -164,11 +191,22 @@ class SecurityAnalyzer:
                 
         if ip_requests:
             baseline['avg_requests_per_ip'] = sum(ip_requests.values()) / len(ip_requests)
+        else:
+            baseline['avg_requests_per_ip'] = 0
             
         return baseline
     
     def detect_anomalies(self, entries, baseline):
-        """Detect anomalous behavior based on baseline"""
+        """
+        Detect anomalous behavior based on established baseline
+        
+        Args:
+            entries: List of parsed log entry dictionaries
+            baseline: Dict containing baseline metrics from establish_baseline()
+        
+        Returns:
+            List of detected anomalies with details
+        """
         anomalies = []
         
         ip_requests = Counter()
@@ -178,34 +216,46 @@ class SecurityAnalyzer:
                 ip_requests[ip] += 1
                 
         # Detect IPs with unusually high request counts
-        avg_requests = baseline['avg_requests_per_ip']
-        threshold = avg_requests * 5  # 5x normal activity
-        
-        for ip, count in ip_requests.items():
-            if count > threshold:
-                anomalies.append({
-                    'type': 'unusual_activity',
-                    'ip': ip,
-                    'requests': count,
-                    'baseline_avg': avg_requests,
-                    'severity': 'medium'
-                })
+        avg_requests = baseline.get('avg_requests_per_ip', 0)
+        if avg_requests > 0:
+            threshold = avg_requests * 5  # 5x normal activity
+            
+            for ip, count in ip_requests.items():
+                if count > threshold:
+                    anomalies.append({
+                        'type': 'unusual_activity',
+                        'ip': ip,
+                        'requests': count,
+                        'baseline_avg': avg_requests,
+                        'severity': 'medium'
+                    })
                 
         return anomalies
     
     def generate_security_report(self, threats, brute_force, rate_limiting, anomalies):
-        """Generate a comprehensive security report"""
+        """
+        Generate a comprehensive security report
+        
+        Args:
+            threats: List of detected security threats
+            brute_force: List of brute force attack attempts
+            rate_limiting: List of rate limiting violations
+            anomalies: List of detected anomalies
+        
+        Returns:
+            Dict containing comprehensive security analysis report
+        """
         report = {
             'summary': {
                 'total_threats': len(threats),
-                'critical_threats': len([t for t in threats if t['severity'] == 'critical']),
-                'high_threats': len([t for t in threats if t['severity'] == 'high']),
+                'critical_threats': len([t for t in threats if t.get('severity') == 'critical']),
+                'high_threats': len([t for t in threats if t.get('severity') == 'high']),
                 'brute_force_attempts': len(brute_force),
                 'rate_limit_violations': len(rate_limiting),
                 'anomalies': len(anomalies)
             },
-            'threats_by_type': Counter([t['type'] for t in threats]),
-            'top_attacking_ips': Counter([t['entry'].get('ip') for t in threats if t['entry'].get('ip')]).most_common(10),
+            'threats_by_type': Counter([t.get('type', 'unknown') for t in threats]),
+            'top_attacking_ips': Counter([t.get('entry', {}).get('ip') for t in threats if t.get('entry', {}).get('ip')]).most_common(10),
             'brute_force_ips': brute_force,
             'rate_limiting_ips': rate_limiting,
             'anomalies': anomalies
@@ -214,39 +264,45 @@ class SecurityAnalyzer:
         return report
     
     def print_security_report(self, report):
-        """Print formatted security report"""
+        """Print formatted security report to console"""
         print(f"\n=== SECURITY ANALYSIS REPORT ===")
         
-        summary = report['summary']
+        summary = report.get('summary', {})
         print(f"\nThreat Summary:")
-        print(f"  Total threats detected: {summary['total_threats']}")
-        print(f"  Critical: {summary['critical_threats']}")
-        print(f"  High: {summary['high_threats']}")
-        print(f"  Brute force attempts: {summary['brute_force_attempts']}")
-        print(f"  Rate limit violations: {summary['rate_limit_violations']}")
-        print(f"  Anomalies: {summary['anomalies']}")
+        print(f"  Total threats detected: {summary.get('total_threats', 0)}")
+        print(f"  Critical: {summary.get('critical_threats', 0)}")
+        print(f"  High: {summary.get('high_threats', 0)}")
+        print(f"  Brute force attempts: {summary.get('brute_force_attempts', 0)}")
+        print(f"  Rate limit violations: {summary.get('rate_limit_violations', 0)}")
+        print(f"  Anomalies: {summary.get('anomalies', 0)}")
         
-        if report['threats_by_type']:
+        threats_by_type = report.get('threats_by_type', {})
+        if threats_by_type:
             print(f"\nThreats by Type:")
-            for threat_type, count in report['threats_by_type'].most_common():
+            for threat_type, count in threats_by_type.most_common():
                 print(f"  {threat_type.replace('_', ' ').title()}: {count}")
                 
-        if report['top_attacking_ips']:
+        top_attacking_ips = report.get('top_attacking_ips', [])
+        if top_attacking_ips:
             print(f"\nTop Attacking IPs:")
-            for ip, count in report['top_attacking_ips']:
+            for ip, count in top_attacking_ips:
                 print(f"  {ip}: {count} threats")
                 
-        if report['brute_force_ips']:
+        brute_force_ips = report.get('brute_force_ips', [])
+        if brute_force_ips:
             print(f"\nBrute Force Attempts:")
-            for bf in report['brute_force_ips'][:5]:
-                print(f"  {bf['ip']}: {bf['attempts']} failed attempts ({bf['severity']} severity)")
+            for bf in brute_force_ips[:5]:
+                print(f"  {bf.get('ip', 'unknown')}: {bf.get('attempts', 0)} failed attempts ({bf.get('severity', 'unknown')} severity)")
                 
-        if report['rate_limiting_ips']:
+        rate_limiting_ips = report.get('rate_limiting_ips', [])
+        if rate_limiting_ips:
             print(f"\nExcessive Request Activity:")
-            for rl in report['rate_limiting_ips'][:5]:
-                print(f"  {rl['ip']}: {rl['requests']} requests ({rl['severity']} severity)")
+            for rl in rate_limiting_ips[:5]:
+                print(f"  {rl.get('ip', 'unknown')}: {rl.get('requests', 0)} requests ({rl.get('severity', 'unknown')} severity)")
                 
-        if report['anomalies']:
+        anomalies_list = report.get('anomalies', [])
+        if anomalies_list:
             print(f"\nAnomalous Behavior:")
-            for anomaly in report['anomalies'][:5]:
-                print(f"  {anomaly['ip']}: {anomaly['requests']} requests (avg: {anomaly['baseline_avg']:.1f})")
+            for anomaly in anomalies_list[:5]:
+                baseline_avg = anomaly.get('baseline_avg', 0)
+                print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (avg: {baseline_avg:.1f})")

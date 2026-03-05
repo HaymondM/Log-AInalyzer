@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """
 Generate sample log files for testing the log analyzer
+
+This module creates two sample log files:
+1. sample_access.log - Web server access log with security threats
+2. sample_app.log - Application log with security events
+
+The generated logs include both normal traffic and various security threats
+such as SQL injection, XSS, path traversal, and brute force attempts.
 """
 
 import random
@@ -8,10 +15,19 @@ from datetime import datetime, timedelta
 
 
 def generate_sample_logs():
-    """Generate sample log files for testing"""
+    """
+    Generate sample log files for testing
+    
+    Creates:
+        - sample_access.log: Web server access log with various attack patterns
+        - sample_app.log: Application log with security events
+    
+    The logs contain a mix of normal traffic and security threats for testing
+    the analyzer's detection capabilities.
+    """
     
     # Sample web server access log with security threats
-    with open('sample_access.log', 'w') as f:
+    with open('sample_access.log', 'w', encoding='utf-8') as f:
         ips = ['192.168.1.100', '10.0.0.50', '203.0.113.45', '198.51.100.23', '185.220.101.42']
         methods = ['GET', 'POST', 'PUT', 'DELETE']
         normal_paths = ['/api/users', '/login', '/dashboard', '/api/data', '/static/css/style.css']
@@ -34,7 +50,7 @@ def generate_sample_logs():
         
         base_time = datetime.now() - timedelta(hours=24)
         
-        # Generate normal traffic
+        # Generate normal traffic (80 entries)
         for i in range(80):
             timestamp = base_time + timedelta(minutes=i*5)
             ip = random.choice(ips[:3])  # Normal IPs
@@ -47,7 +63,7 @@ def generate_sample_logs():
             log_line = f'{ip} - - [{timestamp.strftime("%d/%b/%Y:%H:%M:%S +0000")}] "{method} {path} HTTP/1.1" {status} {size} "-" "{user_agent}"\n'
             f.write(log_line)
         
-        # Generate malicious traffic
+        # Generate malicious traffic (20 entries)
         for i in range(20):
             timestamp = base_time + timedelta(minutes=i*10)
             ip = random.choice(ips[3:])  # Suspicious IPs
@@ -60,7 +76,7 @@ def generate_sample_logs():
             log_line = f'{ip} - - [{timestamp.strftime("%d/%b/%Y:%H:%M:%S +0000")}] "{method} {path} HTTP/1.1" {status} {size} "-" "{user_agent}"\n'
             f.write(log_line)
             
-        # Generate brute force attempts
+        # Generate brute force attempts (15 entries from same IP)
         brute_force_ip = '185.220.101.42'
         for i in range(15):
             timestamp = base_time + timedelta(minutes=i*2)
@@ -68,7 +84,7 @@ def generate_sample_logs():
             f.write(log_line)
     
     # Sample application log with security events
-    with open('sample_app.log', 'w') as f:
+    with open('sample_app.log', 'w', encoding='utf-8') as f:
         levels = ['DEBUG', 'INFO', 'WARN', 'ERROR']
         normal_messages = [
             'User authentication successful',
@@ -89,7 +105,7 @@ def generate_sample_logs():
         
         base_time = datetime.now() - timedelta(hours=12)
         
-        # Normal log entries
+        # Normal log entries (40 entries)
         for i in range(40):
             timestamp = base_time + timedelta(minutes=i*10)
             level = random.choice(['DEBUG', 'INFO'])
@@ -98,7 +114,7 @@ def generate_sample_logs():
             log_line = f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} [{level}] {message}\n'
             f.write(log_line)
             
-        # Security-related entries
+        # Security-related entries (10 entries)
         for i in range(10):
             timestamp = base_time + timedelta(minutes=i*15)
             level = random.choice(['WARN', 'ERROR'])
@@ -107,7 +123,7 @@ def generate_sample_logs():
             log_line = f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} [{level}] {message}\n'
             f.write(log_line)
     
-    print("Sample log files created:")
+    print("Sample log files created successfully:")
     print("- sample_access.log (web server access log with security threats)")
     print("- sample_app.log (application log with security events)")
 
