@@ -236,23 +236,22 @@ class CoreAnalyzer:
         regions = Counter()
         
         for ip in ips:
-            first_octet = int(ip.split('.')[0])
-            
-            # Very basic classification
-            if 192 <= first_octet <= 192:
-                regions['Private/Local'] += 1
-            elif 10 <= first_octet <= 10:
-                regions['Private/Local'] += 1
-            elif 172 <= first_octet <= 172:
-                regions['Private/Local'] += 1
-            elif 1 <= first_octet <= 126:
-                regions['North America/Europe'] += 1
-            elif 128 <= first_octet <= 191:
-                regions['Global/Mixed'] += 1
-            elif 193 <= first_octet <= 223:
-                regions['Asia/Pacific'] += 1
-            else:
-                regions['Unknown/Reserved'] += 1
+            try:
+                first_octet = int(ip.split('.')[0])
+                
+                # Very basic classification
+                if first_octet == 192 or first_octet == 10 or first_octet == 172:
+                    regions['Private/Local'] += 1
+                elif 1 <= first_octet <= 126:
+                    regions['North America/Europe'] += 1
+                elif 128 <= first_octet <= 191:
+                    regions['Global/Mixed'] += 1
+                elif 193 <= first_octet <= 223:
+                    regions['Asia/Pacific'] += 1
+                else:
+                    regions['Unknown/Reserved'] += 1
+            except (ValueError, IndexError):
+                regions['Invalid'] += 1
                 
         return dict(regions)
     
@@ -353,46 +352,57 @@ class CoreAnalyzer:
         """Export analysis results to CSV"""
         filepath = Path(filename)
         
-        with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            
-            # Write different sections of analysis
-            for section_name, section_data in analysis_data.items():
-                writer.writerow([f"=== {section_name.upper()} ==="])
+        try:
+            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
                 
-                if isinstance(section_data, dict):
-                    for key, value in section_data.items():
-                        writer.writerow([key, value])
-                elif isinstance(section_data, list):
-                    for item in section_data:
-                        if isinstance(item, tuple):
-                            writer.writerow(list(item))
-                        else:
-                            writer.writerow([item])
-                
-                writer.writerow([])  # Empty row for separation
+                # Write different sections of analysis
+                for section_name, section_data in analysis_data.items():
+                    writer.writerow([f"=== {section_name.upper()} ==="])
+                    
+                    if isinstance(section_data, dict):
+                        for key, value in section_data.items():
+                            writer.writerow([key, value])
+                    elif isinstance(section_data, list):
+                        for item in section_data:
+                            if isinstance(item, tuple):
+                                writer.writerow(list(item))
+                            else:
+                                writer.writerow([item])
+                    
+                    writer.writerow([])  # Empty row for separation
+        except IOError as e:
+            print(f"Error writing CSV file {filename}: {e}")
+            raise
     
     def export_analysis_to_json(self, analysis_data, filename):
-        """Export analysis results to JSON"""
+        """Export analysis results to JSON format
+        
+        Args:
+            analysis_data: Dictionary containing analysis results
+            filename: Path to output JSON file
+        """
         filepath = Path(filename)
         
-        # Convert Counter objects and other non-serializable objects
-        serializable_data = self._make_serializable(analysis_data)
-        
-        with open(filepath, 'w', encoding='utf-8') as jsonfile:
-            json.dump(serializable_data, jsonfile, indent=2, default=str)
+        try:
+            # Convert Counter objects and other non-serializable types to dicts/lists
+            serializable_data = self._make_json_serializable(analysis_data)
+            
+            with open(filepath, 'w', encoding='utf-8') as jsonfile:
+                json.dump(serializable_data, jsonfile, indent=2, ensure_ascii=False)
+        except IOError as e:
+            print(f"Error writing JSON file {filename}: {e}")
+            raise
     
-    def _make_serializable(self, obj):
-        """Convert objects to JSON-serializable format"""
-        if isinstance(obj, Counter):
-            return dict(obj)
-        elif isinstance(obj, defaultdict):
-            return dict(obj)
-        elif isinstance(obj, dict):
-            return {k: self._make_serializable(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._make_serializable(item) for item in obj]
-        elif isinstance(obj, tuple):
-            return list(obj)
+    def _make_json_serializable(self, data):
+        """Convert data structures to JSON-serializable format"""
+        if isinstance(data, dict):
+            return {key: self._make_json_serializable(value) for key, value in data.items()}
+        elif isinstance(data, (list, tuple)):
+            return [self._make_json_serializable(item) for item in data]
+        elif isinstance(data, Counter):
+            return dict(data)
+        elif isinstance(data, set):
+            return list(data)
         else:
-            return obj
+            return data
