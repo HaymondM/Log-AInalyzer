@@ -49,7 +49,18 @@ class SecurityAnalyzer:
         self.rate_limits = defaultdict(list)
         
     def analyze_entry(self, entry):
-        """Analyze a single log entry for security issues"""
+        """
+        Analyze a single log entry for security issues
+        
+        Args:
+            entry: Dict containing parsed log entry data
+            
+        Returns:
+            List of threat dicts with type, pattern, severity, and entry
+        """
+        if not entry:
+            return []
+            
         threats = []
         
         # Check for attack patterns
@@ -60,23 +71,30 @@ class SecurityAnalyzer:
         # Detect attack patterns
         for attack_type, patterns in self.attack_patterns.items():
             for pattern in patterns:
-                if re.search(pattern, content):
-                    threats.append({
-                        'type': attack_type,
-                        'pattern': pattern,
-                        'severity': self._get_severity(attack_type),
-                        'entry': entry
-                    })
+                try:
+                    if re.search(pattern, content):
+                        threats.append({
+                            'type': attack_type,
+                            'pattern': pattern,
+                            'severity': self._get_severity(attack_type),
+                            'entry': entry
+                        })
+                except re.error:
+                    # Skip invalid regex patterns
+                    continue
                     
         # Check suspicious user agents
         for pattern in self.suspicious_user_agents:
-            if re.search(pattern, user_agent):
-                threats.append({
-                    'type': 'suspicious_user_agent',
-                    'pattern': pattern,
-                    'severity': 'medium',
-                    'entry': entry
-                })
+            try:
+                if re.search(pattern, user_agent):
+                    threats.append({
+                        'type': 'suspicious_user_agent',
+                        'pattern': pattern,
+                        'severity': 'medium',
+                        'entry': entry
+                    })
+            except re.error:
+                continue
                 
         # Track failed logins (4xx status codes)
         status = entry.get('status')
@@ -93,7 +111,15 @@ class SecurityAnalyzer:
         return threats
     
     def _get_severity(self, attack_type):
-        """Determine severity level for attack type"""
+        """
+        Determine severity level for attack type
+        
+        Args:
+            attack_type: String identifying the type of attack
+            
+        Returns:
+            String severity level: 'critical', 'high', 'medium', or 'low'
+        """
         severity_map = {
             'sql_injection': 'high',
             'xss_attempts': 'high',
@@ -109,7 +135,7 @@ class SecurityAnalyzer:
         
         Args:
             threshold: Minimum number of failed attempts to trigger alert
-            time_window: Time window in seconds (not currently used but reserved for future enhancement)
+            time_window: Time window in seconds (reserved for future enhancement)
         
         Returns:
             List of dicts containing IP addresses with suspicious failed login patterns
@@ -135,7 +161,7 @@ class SecurityAnalyzer:
         
         Args:
             threshold: Minimum number of requests to trigger alert
-            time_window: Time window in seconds (not currently used but reserved for future enhancement)
+            time_window: Time window in seconds (reserved for future enhancement)
         
         Returns:
             List of dicts containing IP addresses with excessive request patterns
@@ -162,6 +188,15 @@ class SecurityAnalyzer:
         Returns:
             Dict containing baseline metrics for normal behavior
         """
+        if not entries:
+            return {
+                'avg_requests_per_ip': 0,
+                'common_paths': Counter(),
+                'common_user_agents': Counter(),
+                'status_code_distribution': Counter(),
+                'peak_hours': Counter()
+            }
+            
         baseline = {
             'avg_requests_per_ip': 0,
             'common_paths': Counter(),
@@ -207,6 +242,9 @@ class SecurityAnalyzer:
         Returns:
             List of detected anomalies with details
         """
+        if not entries or not baseline:
+            return []
+            
         anomalies = []
         
         ip_requests = Counter()
@@ -245,6 +283,12 @@ class SecurityAnalyzer:
         Returns:
             Dict containing comprehensive security analysis report
         """
+        # Ensure all inputs are lists
+        threats = threats or []
+        brute_force = brute_force or []
+        rate_limiting = rate_limiting or []
+        anomalies = anomalies or []
+        
         report = {
             'summary': {
                 'total_threats': len(threats),
@@ -264,7 +308,17 @@ class SecurityAnalyzer:
         return report
     
     def print_security_report(self, report):
-        """Print formatted security report to console"""
+        """
+        Print formatted security report to console
+        
+        Args:
+            report: Dict containing security analysis report from generate_security_report()
+        """
+        if not report:
+            print("\n=== SECURITY ANALYSIS REPORT ===")
+            print("No data available for security report")
+            return
+            
         print(f"\n=== SECURITY ANALYSIS REPORT ===")
         
         summary = report.get('summary', {})
