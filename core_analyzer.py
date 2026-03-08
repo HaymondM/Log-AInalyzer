@@ -25,6 +25,15 @@ class CoreAnalyzer:
         
     def analyze_time_patterns(self, entries):
         """Analyze time-based patterns in log entries"""
+        if not entries:
+            return {
+                'hourly_distribution': {},
+                'daily_distribution': {},
+                'day_of_week_distribution': {},
+                'peak_hour': None,
+                'peak_day': None
+            }
+            
         for entry in entries:
             timestamp_str = entry.get('timestamp')
             if timestamp_str:
@@ -52,7 +61,14 @@ class CoreAnalyzer:
         }
     
     def _parse_timestamp(self, timestamp_str):
-        """Parse various timestamp formats"""
+        """Parse various timestamp formats
+        
+        Args:
+            timestamp_str: String containing timestamp to parse
+            
+        Returns:
+            datetime object if parsing successful, None otherwise
+        """
         formats = [
             '%d/%b/%Y:%H:%M:%S %z',  # Apache format
             '%Y-%m-%d %H:%M:%S',     # Application log format
@@ -69,6 +85,15 @@ class CoreAnalyzer:
     
     def analyze_user_agents(self, entries):
         """Analyze user agent patterns"""
+        if not entries:
+            return {
+                'top_user_agents': [],
+                'browsers': {},
+                'operating_systems': {},
+                'devices': {},
+                'total_unique_agents': 0
+            }
+            
         browsers = Counter()
         os_systems = Counter()
         devices = Counter()
@@ -148,6 +173,9 @@ class CoreAnalyzer:
     
     def analyze_response_times(self, entries):
         """Analyze response times and performance metrics"""
+        if not entries:
+            return None
+            
         response_times = []
         status_performance = defaultdict(list)
         path_performance = defaultdict(list)
@@ -174,32 +202,47 @@ class CoreAnalyzer:
                 except ValueError:
                     continue
         
-        if response_times:
-            avg_response_time = sum(response_times) / len(response_times)
-            max_response_time = max(response_times)
-            min_response_time = min(response_times)
+        if not response_times:
+            return None
             
-            # Calculate percentiles
-            sorted_times = sorted(response_times)
-            p95 = sorted_times[int(len(sorted_times) * 0.95)] if sorted_times else 0
-            p99 = sorted_times[int(len(sorted_times) * 0.99)] if sorted_times else 0
-            
-            return {
-                'average_response_time': round(avg_response_time, 2),
-                'max_response_time': round(max_response_time, 2),
-                'min_response_time': round(min_response_time, 2),
-                'p95_response_time': round(p95, 2),
-                'p99_response_time': round(p99, 2),
-                'slow_requests': len([t for t in response_times if t > 1000]),  # > 1 second
-                'status_performance': {k: round(sum(v)/len(v), 2) for k, v in status_performance.items()},
-                'slowest_paths': sorted([(k, round(sum(v)/len(v), 2)) for k, v in path_performance.items()], 
-                                      key=lambda x: x[1], reverse=True)[:10]
-            }
+        avg_response_time = sum(response_times) / len(response_times)
+        max_response_time = max(response_times)
+        min_response_time = min(response_times)
         
-        return None
+        # Calculate percentiles safely
+        sorted_times = sorted(response_times)
+        p95_index = min(int(len(sorted_times) * 0.95), len(sorted_times) - 1)
+        p99_index = min(int(len(sorted_times) * 0.99), len(sorted_times) - 1)
+        p95 = sorted_times[p95_index]
+        p99 = sorted_times[p99_index]
+        
+        return {
+            'average_response_time': round(avg_response_time, 2),
+            'max_response_time': round(max_response_time, 2),
+            'min_response_time': round(min_response_time, 2),
+            'p95_response_time': round(p95, 2),
+            'p99_response_time': round(p99, 2),
+            'slow_requests': len([t for t in response_times if t > 1000]),  # > 1 second
+            'status_performance': {k: round(sum(v)/len(v), 2) for k, v in status_performance.items()},
+            'slowest_paths': sorted([(k, round(sum(v)/len(v), 2)) for k, v in path_performance.items()], 
+                                  key=lambda x: x[1], reverse=True)[:10]
+        }
     
     def analyze_geographic_patterns(self, entries):
         """Analyze geographic patterns from IP addresses"""
+        if not entries:
+            return {
+                'unique_ips': 0,
+                'top_ips': [],
+                'ip_ranges': {},
+                'estimated_regions': {},
+                'requests_per_ip': {
+                    'average': 0,
+                    'max': 0,
+                    'min': 0
+                }
+            }
+            
         # This is a simplified version - in production you'd use a GeoIP database
         ip_patterns = Counter()
         ip_ranges = defaultdict(int)
@@ -257,6 +300,20 @@ class CoreAnalyzer:
     
     def analyze_file_access_patterns(self, entries):
         """Analyze file access patterns and resource usage"""
+        if not entries:
+            return {
+                'file_types': {},
+                'most_popular_paths': [],
+                'http_methods': {},
+                'static_vs_dynamic': {
+                    'static_requests': 0,
+                    'dynamic_requests': 0,
+                    'static_percentage': 0,
+                    'dynamic_percentage': 0
+                },
+                'api_endpoints': []
+            }
+            
         file_types = Counter()
         path_popularity = Counter()
         method_usage = Counter()
@@ -319,6 +376,9 @@ class CoreAnalyzer:
     
     def track_user_sessions(self, entries):
         """Basic session tracking based on IP addresses"""
+        if not entries:
+            return {}
+            
         sessions = defaultdict(lambda: {'requests': [], 'duration': 0, 'pages': set()})
         
         for entry in entries:
@@ -370,39 +430,28 @@ class CoreAnalyzer:
                             else:
                                 writer.writerow([item])
                     
-                    writer.writerow([])  # Empty row for separation
+                    writer.writerow([])  # Empty row between sections
+                    
         except IOError as e:
-            print(f"Error writing CSV file {filename}: {e}")
+            print(f"Error writing CSV file: {e}")
             raise
     
     def export_analysis_to_json(self, analysis_data, filename):
-        """Export analysis results to JSON format
-        
-        Args:
-            analysis_data: Dictionary containing analysis results
-            filename: Path to output JSON file
-        """
+        """Export analysis results to JSON"""
         filepath = Path(filename)
         
         try:
-            # Convert Counter objects and other non-serializable types to dicts/lists
-            serializable_data = self._make_json_serializable(analysis_data)
-            
+            # Convert Counter objects to dicts for JSON serialization
+            json_data = {}
+            for key, value in analysis_data.items():
+                if isinstance(value, Counter):
+                    json_data[key] = dict(value)
+                else:
+                    json_data[key] = value
+                    
             with open(filepath, 'w', encoding='utf-8') as jsonfile:
-                json.dump(serializable_data, jsonfile, indent=2, ensure_ascii=False)
-        except IOError as e:
-            print(f"Error writing JSON file {filename}: {e}")
+                json.dump(json_data, jsonfile, indent=2, default=str)
+                
+        except (IOError, TypeError) as e:
+            print(f"Error writing JSON file: {e}")
             raise
-    
-    def _make_json_serializable(self, data):
-        """Convert data structures to JSON-serializable format"""
-        if isinstance(data, dict):
-            return {key: self._make_json_serializable(value) for key, value in data.items()}
-        elif isinstance(data, (list, tuple)):
-            return [self._make_json_serializable(item) for item in data]
-        elif isinstance(data, Counter):
-            return dict(data)
-        elif isinstance(data, set):
-            return list(data)
-        else:
-            return data
