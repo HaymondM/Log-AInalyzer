@@ -289,6 +289,10 @@ class SecurityAnalyzer:
         rate_limiting = rate_limiting or []
         anomalies = anomalies or []
         
+        # Filter out None IPs before counting
+        valid_threat_ips = [t.get('entry', {}).get('ip') for t in threats 
+                           if t.get('entry', {}).get('ip') is not None]
+        
         report = {
             'summary': {
                 'total_threats': len(threats),
@@ -299,7 +303,7 @@ class SecurityAnalyzer:
                 'anomalies': len(anomalies)
             },
             'threats_by_type': Counter([t.get('type', 'unknown') for t in threats]),
-            'top_attacking_ips': Counter([t.get('entry', {}).get('ip') for t in threats if t.get('entry', {}).get('ip')]).most_common(10),
+            'top_attacking_ips': Counter(valid_threat_ips).most_common(10),
             'brute_force_ips': brute_force,
             'rate_limiting_ips': rate_limiting,
             'anomalies': anomalies
@@ -340,7 +344,8 @@ class SecurityAnalyzer:
         if top_attacking_ips:
             print(f"\nTop Attacking IPs:")
             for ip, count in top_attacking_ips:
-                print(f"  {ip}: {count} threats")
+                if ip:  # Only print non-None IPs
+                    print(f"  {ip}: {count} threats")
                 
         brute_force_ips = report.get('brute_force_ips', [])
         if brute_force_ips:
