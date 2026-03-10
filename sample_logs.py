@@ -83,6 +83,9 @@ def generate_sample_logs():
             log_line = f'{brute_force_ip} - - [{timestamp.strftime("%d/%b/%Y:%H:%M:%S +0000")}] "POST /login HTTP/1.1" 401 256 "-" "curl/7.68.0"\n'
             f.write(log_line)
     
+    print("Sample log files created successfully!")
+    print("Files generated:")
+    
     # Sample application log with security events
     with open('sample_app.log', 'w', encoding='utf-8') as f:
         levels = ['DEBUG', 'INFO', 'WARN', 'ERROR']
@@ -123,9 +126,9 @@ def generate_sample_logs():
             log_line = f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} [{level}] {message}\n'
             f.write(log_line)
     
-    print("Sample log files created successfully:")
     print("- sample_access.log (web server access log with security threats)")
     print("- sample_app.log (application log with security events)")
+    print("\nYou can now run: python log_analyzer.py sample_access.log --security")
 
 
 if __name__ == "__main__":
