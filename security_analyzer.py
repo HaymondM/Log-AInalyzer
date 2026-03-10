@@ -58,7 +58,7 @@ class SecurityAnalyzer:
         Returns:
             List of threat dicts with type, pattern, severity, and entry
         """
-        if not entry:
+        if not entry or not isinstance(entry, dict):
             return []
             
         threats = []
@@ -67,6 +67,12 @@ class SecurityAnalyzer:
         content = entry.get('raw_line', '')
         path = entry.get('path', '')
         user_agent = entry.get('user_agent', '')
+        
+        # Ensure content is a string
+        if not isinstance(content, str):
+            content = str(content) if content else ''
+        if not isinstance(user_agent, str):
+            user_agent = str(user_agent) if user_agent else ''
         
         # Detect attack patterns
         for attack_type, patterns in self.attack_patterns.items():
@@ -79,8 +85,8 @@ class SecurityAnalyzer:
                             'severity': self._get_severity(attack_type),
                             'entry': entry
                         })
-                except re.error:
-                    # Skip invalid regex patterns
+                except (re.error, TypeError):
+                    # Skip invalid regex patterns or type errors
                     continue
                     
         # Check suspicious user agents
@@ -93,7 +99,7 @@ class SecurityAnalyzer:
                         'severity': 'medium',
                         'entry': entry
                     })
-            except re.error:
+            except (re.error, TypeError):
                 continue
                 
         # Track failed logins (4xx status codes)
@@ -188,7 +194,7 @@ class SecurityAnalyzer:
         Returns:
             Dict containing baseline metrics for normal behavior
         """
-        if not entries:
+        if not entries or not isinstance(entries, list):
             return {
                 'avg_requests_per_ip': 0,
                 'common_paths': Counter(),
@@ -208,6 +214,9 @@ class SecurityAnalyzer:
         ip_requests = Counter()
         
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+                
             ip = entry.get('ip')
             if ip:
                 ip_requests[ip] += 1
@@ -242,13 +251,16 @@ class SecurityAnalyzer:
         Returns:
             List of detected anomalies with details
         """
-        if not entries or not baseline:
+        if not entries or not baseline or not isinstance(entries, list):
             return []
             
         anomalies = []
         
         ip_requests = Counter()
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+                
             ip = entry.get('ip')
             if ip:
                 ip_requests[ip] += 1
