@@ -6,6 +6,7 @@ A simple tool to parse and analyze log files
 
 import re
 import argparse
+import traceback
 from datetime import datetime
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -186,7 +187,6 @@ class LogAnalyzer:
             
         except Exception as e:
             print(f"Error in core analysis: {e}")
-            import traceback
             traceback.print_exc()
             
         return analysis_results
@@ -346,28 +346,35 @@ def main():
             
             if threats and args.threats_only:
                 print(f"\n=== DETAILED THREAT ANALYSIS ===")
-                for i, threat in enumerate(threats[:20], 1):
-                    entry = threat['entry']
-                    print(f"\n{i}. {threat['type'].upper()} ({threat['severity']} severity)")
-                    print(f"   Line {entry['line_num']}: {entry['raw_line'][:100]}...")
-                    if entry.get('ip'):
-                        print(f"   IP: {entry['ip']}")
+                for threat in threats[:20]:  # Show top 20 threats
+                    print(f"\nThreat Type: {threat['type']}")
+                    print(f"Severity: {threat['severity']}")
+                    print(f"Line: {threat['entry'].get('raw_line', 'N/A')}")
         
         if args.search:
-            matches = analyzer.search(args.search, args.case_sensitive)
-            print(f"\n=== Search Results for '{args.search}' ===")
-            for match in matches[:20]:  # Limit to first 20 matches
-                print(f"Line {match['line_num']}: {match['raw_line']}")
+            results = analyzer.search(args.search, args.case_sensitive)
+            print(f"\n=== Search Results ===")
+            print(f"Found {len(results)} matches for pattern: {args.search}")
+            for result in results[:10]:  # Show first 10 matches
+                print(f"Line {result['line_num']}: {result['raw_line']}")
                 
         if args.level:
-            filtered = analyzer.filter_by_level(args.level)
-            print(f"\n=== {args.level} Level Entries ===")
-            for entry in filtered[:10]:  # Limit to first 10
-                print(f"Line {entry['line_num']}: {entry['raw_line']}")
+            results = analyzer.filter_by_level(args.level)
+            print(f"\n=== Filter Results ===")
+            print(f"Found {len(results)} entries with level: {args.level}")
+            for result in results[:10]:
+                print(f"Line {result['line_num']}: {result['raw_line']}")
                 
-    except Exception as e:
+    except FileNotFoundError as e:
         print(f"Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        traceback.print_exc()
+        return 1
+    
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())
