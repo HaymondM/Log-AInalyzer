@@ -126,6 +126,9 @@ class SecurityAnalyzer:
         Returns:
             String severity level: 'critical', 'high', 'medium', or 'low'
         """
+        if not attack_type or not isinstance(attack_type, str):
+            return 'low'
+            
         severity_map = {
             'sql_injection': 'high',
             'xss_attempts': 'high',
