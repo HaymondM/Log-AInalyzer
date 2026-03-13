@@ -85,7 +85,7 @@ class SecurityAnalyzer:
                             'severity': self._get_severity(attack_type),
                             'entry': entry
                         })
-                except (re.error, TypeError):
+                except (re.error, TypeError) as e:
                     # Skip invalid regex patterns or type errors
                     continue
                     
@@ -99,7 +99,7 @@ class SecurityAnalyzer:
                         'severity': 'medium',
                         'entry': entry
                     })
-            except (re.error, TypeError):
+            except (re.error, TypeError) as e:
                 continue
                 
         # Track failed logins (4xx status codes)
@@ -149,9 +149,15 @@ class SecurityAnalyzer:
         Returns:
             List of dicts containing IP addresses with suspicious failed login patterns
         """
+        if not self.failed_logins:
+            return []
+            
         brute_force_ips = []
         
         for ip, attempts in self.failed_logins.items():
+            if not ip or not attempts:
+                continue
+                
             if len(attempts) >= threshold:
                 # Check if attempts are within time window
                 if len(attempts) > 1:
@@ -175,9 +181,15 @@ class SecurityAnalyzer:
         Returns:
             List of dicts containing IP addresses with excessive request patterns
         """
+        if not self.rate_limits:
+            return []
+            
         suspicious_ips = []
         
         for ip, requests in self.rate_limits.items():
+            if not ip or not requests:
+                continue
+                
             if len(requests) >= threshold:
                 suspicious_ips.append({
                     'ip': ip,
@@ -274,7 +286,7 @@ class SecurityAnalyzer:
             threshold = avg_requests * 5  # 5x normal activity
             
             for ip, count in ip_requests.items():
-                if count > threshold:
+                if ip and count > threshold:
                     anomalies.append({
                         'type': 'unusual_activity',
                         'ip': ip,
@@ -299,25 +311,25 @@ class SecurityAnalyzer:
             Dict containing comprehensive security analysis report
         """
         # Ensure all inputs are lists
-        threats = threats or []
-        brute_force = brute_force or []
-        rate_limiting = rate_limiting or []
-        anomalies = anomalies or []
+        threats = threats if threats is not None else []
+        brute_force = brute_force if brute_force is not None else []
+        rate_limiting = rate_limiting if rate_limiting is not None else []
+        anomalies = anomalies if anomalies is not None else []
         
         # Filter out None IPs before counting
         valid_threat_ips = [t.get('entry', {}).get('ip') for t in threats 
-                           if t.get('entry', {}).get('ip') is not None]
+                           if isinstance(t, dict) and t.get('entry', {}).get('ip') is not None]
         
         report = {
             'summary': {
                 'total_threats': len(threats),
-                'critical_threats': len([t for t in threats if t.get('severity') == 'critical']),
-                'high_threats': len([t for t in threats if t.get('severity') == 'high']),
+                'critical_threats': len([t for t in threats if isinstance(t, dict) and t.get('severity') == 'critical']),
+                'high_threats': len([t for t in threats if isinstance(t, dict) and t.get('severity') == 'high']),
                 'brute_force_attempts': len(brute_force),
                 'rate_limit_violations': len(rate_limiting),
                 'anomalies': len(anomalies)
             },
-            'threats_by_type': Counter([t.get('type', 'unknown') for t in threats]),
+            'threats_by_type': Counter([t.get('type', 'unknown') for t in threats if isinstance(t, dict)]),
             'top_attacking_ips': Counter(valid_threat_ips).most_common(10),
             'brute_force_ips': brute_force,
             'rate_limiting_ips': rate_limiting,
@@ -333,7 +345,7 @@ class SecurityAnalyzer:
         Args:
             report: Dict containing security analysis report from generate_security_report()
         """
-        if not report:
+        if not report or not isinstance(report, dict):
             print("\n=== SECURITY ANALYSIS REPORT ===")
             print("No data available for security report")
             return
@@ -366,17 +378,20 @@ class SecurityAnalyzer:
         if brute_force_ips:
             print(f"\nBrute Force Attempts:")
             for bf in brute_force_ips[:5]:
-                print(f"  {bf.get('ip', 'unknown')}: {bf.get('attempts', 0)} failed attempts ({bf.get('severity', 'unknown')} severity)")
+                if isinstance(bf, dict):
+                    print(f"  {bf.get('ip', 'unknown')}: {bf.get('attempts', 0)} failed attempts ({bf.get('severity', 'unknown')} severity)")
                 
         rate_limiting_ips = report.get('rate_limiting_ips', [])
         if rate_limiting_ips:
             print(f"\nExcessive Request Activity:")
             for rl in rate_limiting_ips[:5]:
-                print(f"  {rl.get('ip', 'unknown')}: {rl.get('requests', 0)} requests ({rl.get('severity', 'unknown')} severity)")
+                if isinstance(rl, dict):
+                    print(f"  {rl.get('ip', 'unknown')}: {rl.get('requests', 0)} requests ({rl.get('severity', 'unknown')} severity)")
                 
         anomalies_list = report.get('anomalies', [])
         if anomalies_list:
             print(f"\nAnomalous Behavior:")
             for anomaly in anomalies_list[:5]:
-                baseline_avg = anomaly.get('baseline_avg', 0)
-                print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (avg: {baseline_avg:.1f})")
+                if isinstance(anomaly, dict):
+                    baseline_avg = anomaly.get('baseline_avg', 0)
+                    print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (avg: {baseline_avg:.1f})")
