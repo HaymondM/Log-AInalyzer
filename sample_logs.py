@@ -24,6 +24,9 @@ def generate_sample_logs():
     
     The logs contain a mix of normal traffic and security threats for testing
     the analyzer's detection capabilities.
+    
+    Returns:
+        int: 0 on success, 1 on failure
     """
     
     try:
@@ -84,9 +87,6 @@ def generate_sample_logs():
                 log_line = f'{brute_force_ip} - - [{timestamp.strftime("%d/%b/%Y:%H:%M:%S +0000")}] "POST /login HTTP/1.1" 401 256 "-" "curl/7.68.0"\n'
                 f.write(log_line)
         
-        print("Sample log files created successfully!")
-        print("Files generated:")
-        
         # Sample application log with security events
         with open('sample_app.log', 'w', encoding='utf-8') as f:
             levels = ['DEBUG', 'INFO', 'WARN', 'ERROR']
@@ -127,9 +127,13 @@ def generate_sample_logs():
                 log_line = f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} [{level}] {message}\n'
                 f.write(log_line)
         
+        print("Sample log files created successfully!")
+        print("Files generated:")
         print("- sample_access.log (web server access log with security threats)")
         print("- sample_app.log (application log with security events)")
         print("\nYou can now run: python log_analyzer.py sample_access.log --security")
+        
+        return 0
         
     except IOError as e:
         print(f"Error writing log files: {e}")
@@ -137,8 +141,6 @@ def generate_sample_logs():
     except Exception as e:
         print(f"Unexpected error generating logs: {e}")
         return 1
-    
-    return 0
 
 
 if __name__ == "__main__":
