@@ -143,8 +143,8 @@ class SecurityAnalyzer:
         Detect potential brute force attacks
         
         Args:
-            threshold: Minimum number of failed attempts to trigger alert
-            time_window: Time window in seconds (reserved for future enhancement)
+            threshold: Minimum number of failed attempts to trigger alert (default: 10)
+            time_window: Time window in seconds (reserved for future enhancement, default: 300)
         
         Returns:
             List of dicts containing IP addresses with suspicious failed login patterns
@@ -175,8 +175,8 @@ class SecurityAnalyzer:
         Detect potential DDoS or excessive requests
         
         Args:
-            threshold: Minimum number of requests to trigger alert
-            time_window: Time window in seconds (reserved for future enhancement)
+            threshold: Minimum number of requests to trigger alert (default: 100)
+            time_window: Time window in seconds (reserved for future enhancement, default: 60)
         
         Returns:
             List of dicts containing IP addresses with excessive request patterns
@@ -350,10 +350,10 @@ class SecurityAnalyzer:
             print("No data available for security report")
             return
             
-        print(f"\n=== SECURITY ANALYSIS REPORT ===")
+        print("\n=== SECURITY ANALYSIS REPORT ===")
         
         summary = report.get('summary', {})
-        print(f"\nThreat Summary:")
+        print("\nThreat Summary:")
         print(f"  Total threats detected: {summary.get('total_threats', 0)}")
         print(f"  Critical: {summary.get('critical_threats', 0)}")
         print(f"  High: {summary.get('high_threats', 0)}")
@@ -363,35 +363,35 @@ class SecurityAnalyzer:
         
         threats_by_type = report.get('threats_by_type', {})
         if threats_by_type:
-            print(f"\nThreats by Type:")
+            print("\nThreats by Type:")
             for threat_type, count in threats_by_type.most_common():
                 print(f"  {threat_type.replace('_', ' ').title()}: {count}")
                 
         top_attacking_ips = report.get('top_attacking_ips', [])
         if top_attacking_ips:
-            print(f"\nTop Attacking IPs:")
+            print("\nTop Attacking IPs:")
             for ip, count in top_attacking_ips:
                 if ip:  # Only print non-None IPs
                     print(f"  {ip}: {count} threats")
                 
         brute_force_ips = report.get('brute_force_ips', [])
         if brute_force_ips:
-            print(f"\nBrute Force Attempts:")
+            print("\nBrute Force Attempts:")
             for bf in brute_force_ips[:5]:
                 if isinstance(bf, dict):
                     print(f"  {bf.get('ip', 'unknown')}: {bf.get('attempts', 0)} failed attempts ({bf.get('severity', 'unknown')} severity)")
                 
         rate_limiting_ips = report.get('rate_limiting_ips', [])
         if rate_limiting_ips:
-            print(f"\nExcessive Request Activity:")
+            print("\nExcessive Request Activity:")
             for rl in rate_limiting_ips[:5]:
                 if isinstance(rl, dict):
                     print(f"  {rl.get('ip', 'unknown')}: {rl.get('requests', 0)} requests ({rl.get('severity', 'unknown')} severity)")
                 
         anomalies_list = report.get('anomalies', [])
         if anomalies_list:
-            print(f"\nAnomalous Behavior:")
+            print("\nAnomalous Behavior:")
             for anomaly in anomalies_list[:5]:
                 if isinstance(anomaly, dict):
                     baseline_avg = anomaly.get('baseline_avg', 0)
-                    print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (avg: {baseline_avg:.1f})")
+                    print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (baseline avg: {baseline_avg:.1f})")

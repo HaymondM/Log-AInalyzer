@@ -129,9 +129,11 @@ def generate_sample_logs():
         
         print("Sample log files created successfully!")
         print("Files generated:")
-        print("- sample_access.log (web server access log with security threats)")
-        print("- sample_app.log (application log with security events)")
-        print("\nYou can now run: python log_analyzer.py sample_access.log --security")
+        print("  - sample_access.log (web server access log with security threats)")
+        print("  - sample_app.log (application log with security events)")
+        print("\nYou can now run:")
+        print("  python log_analyzer.py sample_access.log --security")
+        print("  python log_analyzer.py sample_access.log --core-analysis")
         
         return 0
         
