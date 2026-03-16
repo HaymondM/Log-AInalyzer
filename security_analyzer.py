@@ -394,4 +394,4 @@ class SecurityAnalyzer:
             for anomaly in anomalies_list[:5]:
                 if isinstance(anomaly, dict):
                     baseline_avg = anomaly.get('baseline_avg', 0)
-                    print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (baseline: {baseline_avg:.1f})")
+                    print(f"  {anomaly.get('ip', 'unknown')}: {anomaly.get('requests', 0)} requests (baseline avg: {baseline_avg:.1f})")
